@@ -1,0 +1,235 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1">
+  <title>My Order Store</title>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 24px 16px;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      color: #f4fffd;
+      background:
+        radial-gradient(circle at top, #123b42, transparent 45%),
+        #091326;
+    }
+
+    .logo {
+      width: 112px;
+      height: 112px;
+      margin: 18px auto;
+      display: grid;
+      place-items: center;
+      border: 3px solid #00efc0;
+      border-radius: 50%;
+      box-shadow: 0 0 25px #00efc077;
+      font-size: 42px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #28f5ce;
+      font-size: 29px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #9bb9c6;
+      margin-bottom: 28px;
+    }
+
+    .card {
+      background: linear-gradient(145deg, #112b3a, #101629);
+      border: 1px solid #087d70;
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .package {
+      width: 100%;
+      display: block;
+      margin: 12px 0;
+      padding: 17px;
+      color: white;
+      background: #0b1729;
+      border: 1px solid #17484c;
+      border-radius: 13px;
+      text-align: left;
+      font-size: 16px;
+    }
+
+    .package.selected {
+      border: 2px solid #00edc0;
+      background: #104346;
+      box-shadow: 0 0 12px #00edc044;
+    }
+
+    .price {
+      display: block;
+      margin-top: 8px;
+      color: #00f0c0;
+      font-size: 23px;
+      font-weight: bold;
+    }
+
+    label {
+      display: block;
+      margin: 18px 0 8px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 15px;
+      border-radius: 10px;
+      border: 1px solid #146c65;
+      background: #0a1425;
+      color: white;
+      font-size: 16px;
+    }
+
+    .primary {
+      width: 100%;
+      padding: 17px;
+      border: none;
+      border-radius: 12px;
+      margin-top: 20px;
+      background: linear-gradient(90deg, #00dcb0, #00f0ce);
+      color: #061b22;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .note {
+      color: #9bb9c6;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-top: 18px;
+    }
+
+    #status {
+      margin-top: 15px;
+      overflow-wrap: anywhere;
+      color: #5fffd9;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="logo">🛒</div>
+  <h1>MY ORDER STORE</h1>
+  <p class="subtitle">Choose a package and place your order</p>
+
+  <section class="card">
+    <h2>Select a package</h2>
+
+    <button class="package selected" data-id="basic"
+            onclick="choose(this)">
+      Basic Package
+      <span class="price">$10</span>
+    </button>
+
+    <button class="package" data-id="standard"
+            onclick="choose(this)">
+      Standard Package
+      <span class="price">$25</span>
+    </button>
+
+    <button class="package" data-id="premium"
+            onclick="choose(this)">
+      Premium Package
+      <span class="price">$50</span>
+    </button>
+  </section>
+
+  <section class="card">
+    <h2>Order details</h2>
+
+    <label for="customer">Your name</label>
+    <input id="customer" maxlength="80"
+           placeholder="Enter your name">
+
+    <label for="contact">Email or order contact</label>
+    <input id="contact" type="email" maxlength="150"
+           placeholder="you@example.com">
+
+    <label for="payment">Payment method</label>
+    <select id="payment">
+      <option value="manual">Manual payment review</option>
+      <option value="provider">Approved payment provider</option>
+    </select>
+
+    <button class="primary" onclick="placeOrder()">
+      Continue to checkout →
+    </button>
+
+    <p id="status" role="status"></p>
+
+    <p class="note">
+      This is a demonstration checkout. No payment is collected
+      and no order is saved yet. Never enter your wallet recovery
+      phrase or private key.
+    </p>
+  </section>
+
+  <script>
+    const tg = window.Telegram?.WebApp;
+    let selectedPackage = "basic";
+
+    if (tg) {
+      tg.ready();
+      tg.expand();
+    }
+
+    function choose(button) {
+      document.querySelectorAll(".package").forEach(item => {
+        item.classList.remove("selected");
+      });
+
+      button.classList.add("selected");
+      selectedPackage = button.dataset.id;
+    }
+
+    function placeOrder() {
+      const name = document.getElementById("customer").value.trim();
+      const contact = document.getElementById("contact").value.trim();
+      const payment = document.getElementById("payment").value;
+
+      if (!name || !contact ||
+          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) {
+        document.getElementById("status").textContent =
+          "Enter your name and a valid email address.";
+        return;
+      }
+
+      const order = {
+        package: selectedPackage,
+        customer: name,
+        contact: contact,
+        paymentMethod: payment
+      };
+
+      document.getElementById("status").textContent =
+        "Demo only: checkout interface is ready. " +
+        "Connect a secure backend to submit this order.";
+
+      // The next development step will send this order
+      // to a server for validation and secure storage.
+      console.log("Demo order:", order);
+
+      if (tg) {
+        tg.HapticFeedback?.notificationOccurred("success");
+      }
+    }
+  </script>
+</body>
+</html>
