@@ -151,13 +151,32 @@ function submitOrder(){
     email:document.getElementById("email").value.trim(),
     status:"Pending verification"
   };
-  const msg=Object.entries(order).map(([k,v])=>k+": "+v).join("\n");
+  const msg = [
+    "NEW ORDER — " + order.orderId,
+    "Status: " + order.status,
+    "Created: " + order.createdAt,
+    "Package: " + order.package,
+    "Service credits: " + order.serviceCredits,
+    "Amount: " + order.amountUSDT + " USDT",
+    "Receiving wallet: " + order.receivingWallet,
+    "Network: " + order.network,
+    "Payment address: " + order.paymentAddress,
+    "Transaction ID: " + order.transactionId,
+    "Contact name: " + (order.customerName || "Not provided"),
+    "Email: " + (order.email || "Not provided"),
+    "",
+    "Please verify payment independently before changing the status."
+  ].join("\n");
   const result=document.getElementById("result");
   result.classList.remove("hidden");
-  result.innerHTML="<strong>Review complete.</strong><p>Your order summary is ready. No order has been sent to the server and no payment has been verified.</p><button class='btn secondary' type='button' id='copyOrder'>Copy order details</button>";
+  result.innerHTML="<strong>Order summary prepared.</strong><p>Telegram will open with the details ready to send. Review the message and tap Send yourself. No automatic notification or payment verification occurs.</p><button class='btn primary' type='button' id='sendTelegram'>Open Telegram with order details</button> <button class='btn secondary' type='button' id='copyOrder'>Copy order details</button>";
+  document.getElementById("sendTelegram").addEventListener("click",()=>{
+    const telegramUrl = "https://t.me/share/url?url=" + encodeURIComponent("Order " + order.orderId) + "&text=" + encodeURIComponent(msg);
+    window.open(telegramUrl, "_blank", "noopener");
+  });
   document.getElementById("copyOrder").addEventListener("click",async()=>{
-    try{await navigator.clipboard.writeText(msg);alert("Order details copied. Send them to the official administrator contact.");}
-    catch(e){const t=document.createElement("textarea");t.value=msg;document.body.appendChild(t);t.select();document.execCommand("copy");t.remove();alert("Order details copied.");}
+    try{await navigator.clipboard.writeText(msg);alert("Order details copied. Open your admin chat in Telegram and paste the message.");}
+    catch(e){const t=document.createElement("textarea");t.value=msg;document.body.appendChild(t);t.select();document.execCommand("copy");t.remove();alert("Order details copied. Open your admin chat in Telegram and paste the message.");}
   });
 }
 </script>
