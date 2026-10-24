@@ -65,7 +65,7 @@
       <div class="eyebrow">Step 5 of 5</div><h2>Review and submit</h2>
       <p>Check all details. Your order should remain pending until the payment is independently verified.</p>
       <div class="summary" id="review"></div>
-      <div class="notice">This GitHub Pages demo cannot securely store orders or notify an administrator. The button below creates a message you can send manually; secure automatic notifications require a backend.</div>
+      <div class="notice">When you submit, your order details are sent to the order-notification service for Telegram delivery. Payment remains pending until the administrator verifies it independently.</div>
       <label class="fine"><input id="agree" type="checkbox" style="width:auto;margin-right:8px">I checked the details and understand payment is pending verification.</label>
       <div class="actions"><button class="btn secondary" type="button" onclick="go(4)">← Back</button><button class="btn primary" type="button" onclick="submitOrder()">Confirm order</button></div>
       <div id="result" class="success hidden"></div>
@@ -80,9 +80,9 @@
    3. Do not add a Telegram bot token to this public file.
 */
 const ADMIN_PAYMENT_ADDRESSES = {
-  TRC20: "ADMIN_PAYMENT_ADDRESS_NOT_CONFIGURED",
-  BEP20: "ADMIN_PAYMENT_ADDRESS_NOT_CONFIGURED",
-  ERC20: "ADMIN_PAYMENT_ADDRESS_NOT_CONFIGURED"
+  TRC20: "TJFHcNFXKNwM8uCvhz1WwCXRZMt5JyWT5N",
+  BEP20: "0x3cad8ecd3428032bdbb66038a3286388da516579",
+  ERC20: "0x3cad8ecd3428032bdbb66038a3286388da516579"
 };
 const state = {package:"Starter", amount:"10", credits:"100"};
 document.querySelectorAll(".package").forEach(btn=>btn.addEventListener("click",()=>{
@@ -135,49 +135,53 @@ function updateReview(){
   document.getElementById("review").innerHTML=rows.map(([k,v])=>`<div class="sumrow"><span>${escapeHtml(k)}</span><span>${escapeHtml(v)}</span></div>`).join("");
 }
 function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
-function submitOrder(){
+async function submitOrder(){
   if(!document.getElementById("agree").checked){alert("Please confirm that you reviewed the details.");return;}
+  const network=document.getElementById("network").value;
+  const paymentAddress=ADMIN_PAYMENT_ADDRESSES[network];
+  if(!paymentAddress || paymentAddress.includes("NOT_CONFIGURED")){
+    alert("Orders are disabled until the administrator configures and verifies the payment address for this network.");
+    return;
+  }
+  const txid=document.getElementById("txid").value.trim();
+  const wallet=document.getElementById("wallet").value.trim();
+  if(wallet.length<10 || txid.length<8){alert("Please check your receiving wallet and transaction ID.");return;}
   const order={
     orderId:"ORD-"+Date.now().toString(36).toUpperCase(),
     createdAt:new Date().toISOString(),
     package:state.package,
     serviceCredits:state.credits,
-    amountUSDT:state.amount,
-    receivingWallet:document.getElementById("wallet").value.trim(),
-    network:document.getElementById("network").value,
-    paymentAddress:ADMIN_PAYMENT_ADDRESSES[document.getElementById("network").value],
-    transactionId:document.getElementById("txid").value.trim(),
+    amount:state.amount,
+    wallet:wallet,
+    network:network,
+    paymentAddress:paymentAddress,
+    transactionId:txid,
     customerName:document.getElementById("customer").value.trim(),
     email:document.getElementById("email").value.trim(),
     status:"Pending verification"
   };
-  const msg = [
-    "NEW ORDER — " + order.orderId,
-    "Status: " + order.status,
-    "Created: " + order.createdAt,
-    "Package: " + order.package,
-    "Service credits: " + order.serviceCredits,
-    "Amount: " + order.amountUSDT + " USDT",
-    "Receiving wallet: " + order.receivingWallet,
-    "Network: " + order.network,
-    "Payment address: " + order.paymentAddress,
-    "Transaction ID: " + order.transactionId,
-    "Contact name: " + (order.customerName || "Not provided"),
-    "Email: " + (order.email || "Not provided"),
-    "",
-    "Please verify payment independently before changing the status."
-  ].join("\n");
   const result=document.getElementById("result");
-  result.classList.remove("hidden");
-  result.innerHTML="<strong>Order summary prepared.</strong><p>Telegram will open with the details ready to send. Review the message and tap Send yourself. No automatic notification or payment verification occurs.</p><button class='btn primary' type='button' id='sendTelegram'>Open Telegram with order details</button> <button class='btn secondary' type='button' id='copyOrder'>Copy order details</button>";
-  document.getElementById("sendTelegram").addEventListener("click",()=>{
-    const telegramUrl = "https://t.me/share/url?url=" + encodeURIComponent("Order " + order.orderId) + "&text=" + encodeURIComponent(msg);
-    window.open(telegramUrl, "_blank", "noopener");
-  });
-  document.getElementById("copyOrder").addEventListener("click",async()=>{
-    try{await navigator.clipboard.writeText(msg);alert("Order details copied. Open your admin chat in Telegram and paste the message.");}
-    catch(e){const t=document.createElement("textarea");t.value=msg;document.body.appendChild(t);t.select();document.execCommand("copy");t.remove();alert("Order details copied. Open your admin chat in Telegram and paste the message.");}
-  });
+  const submitButton=document.querySelector('button[onclick="submitOrder()"]');
+  submitButton.disabled=true;
+  submitButton.textContent="Submitting…";
+  try{
+    // Apps Script does not reliably support browser CORS preflight. no-cors
+    // allows sending the request, but the browser cannot read its response.
+    await fetch("https://script.google.com/macros/s/AKfycbyH5o0URTjw3JWEWUXWvC7qrTmZhO72Ps6FThZP1lEcMGQv2QhOTr4AVtE9ekZTzfLR/exec",{
+      method:"POST",
+      mode:"no-cors",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify(order)
+    });
+    result.classList.remove("hidden");
+    result.innerHTML="<strong>Order submission sent.</strong><p>Your browser cannot confirm whether Telegram delivered the notification. The order is still pending verification. Please contact the administrator if no notification arrives; do not submit repeatedly.</p><p><strong>Order ID:</strong> "+escapeHtml(order.orderId)+"</p>";
+  }catch(err){
+    result.classList.remove("hidden");
+    result.innerHTML="<strong>Could not send the order.</strong><p>Check your internet connection and try again later. No payment has been verified.</p>";
+  }finally{
+    submitButton.disabled=false;
+    submitButton.textContent="Confirm order";
+  }
 }
 </script>
 </body>
